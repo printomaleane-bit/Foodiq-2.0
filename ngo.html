@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoodIQ - NGO Portal</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .theme-transition { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .anim-slide-in { animation: slideIn 0.3s ease-out forwards; }
+    </style>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 
+                            emerald: '#10b981', 
+                            dark: '#064e3b',
+                            light: '#ecfdf5',
+                            accent: '#f97316'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 h-screen w-screen overflow-hidden relative flex flex-col">
+
+    <div class="absolute top-[-10%] right-[-5%] h-[500px] w-[500px] rounded-full bg-emerald-200/40 blur-[100px] -z-10"></div>
+    <div class="absolute bottom-[-10%] left-[-10%] h-[600px] w-[600px] rounded-full bg-blue-200/40 blur-[120px] -z-10"></div>
+
+    <header class="flex items-center justify-between px-8 py-5 bg-white/80 backdrop-blur-md border-b border-slate-100 shrink-0 z-40 relative">
+        <div class="flex items-center gap-6">
+            <button onclick="toggleSidebar()" class="p-2 text-slate-500 hover:text-brand-emerald hover:bg-emerald-50 rounded-lg theme-transition active:scale-95">
+                <i data-lucide="menu" class="w-7 h-7"></i>
+            </button>
+
+            <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-emerald text-white shadow-md shadow-emerald-200">
+                    <i data-lucide="heart-handshake" class="w-6 h-6"></i>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-2xl font-black text-slate-800 tracking-tight leading-none">FoodIQ</span>
+                    <span class="text-[10px] font-bold text-brand-emerald uppercase tracking-wider">NGO Partner</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-8">
+            <button class="flex items-center gap-2 bg-brand-emerald text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-600 theme-transition active:scale-95">
+                <i data-lucide="plus" class="w-4 h-4"></i> CONNECT
+            </button>
+            <div class="h-8 w-px bg-slate-200"></div>
+            <div class="text-right">
+                <div id="clock-time" class="text-lg font-bold text-slate-800 leading-none">12:00 PM</div>
+                <div id="clock-date" class="text-xs font-medium text-slate-400 mt-1">Dec 05, 2025</div>
+            </div>
+            <button class="relative p-2 text-slate-400 hover:text-slate-600 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md theme-transition">
+                <i data-lucide="bell" class="w-5 h-5"></i>
+                <span class="absolute top-2 right-2 w-2 h-2 bg-brand-emerald rounded-full border border-white animate-pulse"></span>
+            </button>
+            <div class="h-10 w-10 bg-slate-100 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 font-bold overflow-hidden cursor-pointer hover:ring-2 hover:ring-brand-emerald hover:ring-offset-2 theme-transition">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=NGO" alt="User" class="h-full w-full object-cover">
+            </div>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden relative">
+        <aside id="sidebar" class="absolute top-0 left-0 z-50 h-full w-72 bg-white border-r border-slate-200 transform -translate-x-full sidebar-transition flex flex-col shadow-2xl">
+            <div class="p-6 flex justify-between items-center border-b border-slate-50">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Navigation</h3>
+                <button onclick="toggleSidebar()" class="p-1 text-slate-400 hover:text-red-500 transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div id="sidebar-content" class="p-4 space-y-2 flex-1 overflow-y-auto"></div>
+            <div class="p-6 border-t border-slate-100 bg-slate-50/50">
+                <button class="flex items-center gap-3 text-slate-500 hover:text-red-500 text-sm font-medium transition-colors w-full">
+                    <i data-lucide="log-out" class="w-4 h-4"></i> Sign Out
+                </button>
+            </div>
+        </aside>
+
+        <div id="sidebar-backdrop" onclick="toggleSidebar()" class="absolute inset-0 bg-slate-900/20 backdrop-blur-sm z-40 hidden transition-opacity opacity-0"></div>
+
+        <main class="flex-1 overflow-y-auto bg-slate-50/50 p-8" id="main-content"></main>
+    </div>
+
+    <script>
+        const navData = {
+            homeland: { label: "HOMELAND", icon: "home", subTabs: ["Pillai Food Drive", "Rasayani Community Kitchen", "PQR Overview"] },
+            epic_connect: { label: "EPIC CONNECT", icon: "globe", subTabs: ["LMN Network", "OPQ Partners", "RST Global"] }
+        };
+
+        const pageContent = {
+            "Pillai Food Drive": `
+                <div class="anim-slide-in">
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 mb-8 flex justify-between items-start">
+                        <div>
+                            <div class="inline-flex items-center gap-2 px-3 py-1 bg-orange-50 text-brand-accent text-xs font-bold rounded-full mb-3 uppercase tracking-wide">
+                                <i data-lucide="check-circle" class="w-3 h-3"></i> Campus Initiative
+                            </div>
+                            <h1 class="text-4xl font-black text-slate-800 mb-2">Pillai Food Drive (CSD)</h1>
+                            <div class="flex gap-4 text-sm text-slate-500 font-medium mb-4">
+                                <span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-4 h-4"></i> Pillai Campus, New Panvel</span>
+                                <span class="flex items-center gap-1"><i data-lucide="calendar" class="w-4 h-4"></i> Community Service Day '25</span>
+                            </div>
+                            <p class="text-slate-600 max-w-2xl leading-relaxed">The annual mega-collection drive organized by students and faculty of Pillai Group of Institutions to support 40+ local NGOs and orphanages.</p>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="bg-slate-50 p-4 rounded-xl text-center min-w-[100px] border border-slate-100"><span class="block text-2xl font-black text-brand-emerald">500+</span><span class="text-xs font-bold text-slate-400 uppercase">Volunteers</span></div>
+                            <div class="bg-slate-50 p-4 rounded-xl text-center min-w-[100px] border border-slate-100"><span class="block text-2xl font-black text-brand-emerald">40</span><span class="text-xs font-bold text-slate-400 uppercase">Partners</span></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-end mb-6"><h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">Collection Targets <span class="px-2 py-0.5 bg-emerald-100 text-brand-emerald text-[10px] rounded-full uppercase">Active</span></h2><button class="text-sm font-bold text-brand-emerald hover:underline">Filter Dept ▼</button></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-brand-emerald transition-all group flex flex-col h-full"><div class="mb-auto"><span class="inline-block px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold uppercase rounded mb-2">High Priority</span><h3 class="text-lg font-bold text-slate-800">Rice (5kg Bags)</h3><p class="text-sm text-slate-500 mb-4">Target: 500 Bags</p></div><button class="w-full py-2 bg-white border border-brand-emerald text-brand-emerald rounded-lg text-sm font-bold hover:bg-brand-emerald hover:text-white transition-colors">Drop at Counter</button></div>
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-brand-emerald transition-all group flex flex-col h-full"><div class="mb-auto"><span class="inline-block px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold uppercase rounded mb-2">High Priority</span><h3 class="text-lg font-bold text-slate-800">Dal / Pulses</h3><p class="text-sm text-slate-500 mb-4">Target: 200 kg</p></div><button class="w-full py-2 bg-white border border-brand-emerald text-brand-emerald rounded-lg text-sm font-bold hover:bg-brand-emerald hover:text-white transition-colors">Drop at Counter</button></div>
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-brand-emerald transition-all group flex flex-col h-full"><div class="mb-auto"><span class="inline-block px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold uppercase rounded mb-2">High Priority</span><h3 class="text-lg font-bold text-slate-800">Cooking Oil (1L)</h3><p class="text-sm text-slate-500 mb-4">Target: 300 Bottles</p></div><button class="w-full py-2 bg-white border border-brand-emerald text-brand-emerald rounded-lg text-sm font-bold hover:bg-brand-emerald hover:text-white transition-colors">Drop at Counter</button></div>
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-brand-emerald transition-all group flex flex-col h-full"><div class="mb-auto"><span class="inline-block px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold uppercase rounded mb-2">Medium</span><h3 class="text-lg font-bold text-slate-800">Stationery Kits</h3><p class="text-sm text-slate-500 mb-4">Target: 500 Sets</p></div><button class="w-full py-2 bg-white border border-brand-emerald text-brand-emerald rounded-lg text-sm font-bold hover:bg-brand-emerald hover:text-white transition-colors">Drop at Counter</button></div>
+                    </div>
+                    <div class="flex justify-between items-end mb-6"><h2 class="text-xl font-bold text-slate-800">Highlights</h2><button class="text-sm font-bold text-slate-400 hover:text-slate-600">View Archive ></button></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-brand-emerald overflow-hidden flex flex-col"><div class="p-6"><div class="flex items-center gap-2 text-xs font-bold text-brand-emerald uppercase mb-2"><i data-lucide="calendar" class="w-3 h-3"></i> Jan 2024 • Mega Event</div><h3 class="text-lg font-bold text-slate-800 mb-2">Community Service Day 2024</h3><p class="text-sm text-slate-500 leading-relaxed mb-4">Hosted 45 NGOs on campus. Students and faculty collectively donated grains, clothes, and essentials worth ₹15 Lakhs.</p><div class="flex gap-2"><span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded">🤝 45 NGOs</span><span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded">💰 ₹15L Value</span></div></div></div>
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-brand-emerald overflow-hidden flex flex-col"><div class="p-6"><div class="flex items-center gap-2 text-xs font-bold text-brand-emerald uppercase mb-2"><i data-lucide="calendar" class="w-3 h-3"></i> Dec 2024 • Rural Visit</div><h3 class="text-lg font-bold text-slate-800 mb-2">Unnat Bharat Abhiyan</h3><p class="text-sm text-slate-500 leading-relaxed mb-4">Engineering students visited adopted villages in Panvel taluka to distribute ration kits and install solar street lights.</p><div class="flex gap-2"><span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded">🏘️ 3 Villages</span><span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded">💡 Tech Support</span></div></div></div>
+                    </div>
+                </div>
+            `,
+            "Rasayani Community Kitchen": `
+                <div class="anim-slide-in">
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 mb-8 flex justify-between items-start">
+                        <div>
+                            <div class="inline-flex items-center gap-2 px-3 py-1 bg-orange-50 text-brand-accent text-xs font-bold rounded-full mb-3 uppercase tracking-wide">
+                                <i data-lucide="check-circle" class="w-3 h-3"></i> Verified Kitchen
+                            </div>
+                            <h1 class="text-4xl font-black text-slate-800 mb-2">Rasayani Community Kitchen</h1>
+                            <div class="flex gap-4 text-sm text-slate-500 font-medium mb-4">
+                                <span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-4 h-4"></i> Mohopada Market, Rasayani</span>
+                                <span class="flex items-center gap-1"><i data-lucide="phone" class="w-4 h-4"></i> +91 99210 XXXXX</span>
+                            </div>
+                            <p class="text-slate-600 max-w-2xl leading-relaxed">A centralized kitchen providing freshly cooked nutritious meals to industrial workers, senior citizens, and slum dwellers in the Rasayani belt.</p>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="bg-slate-50 p-4 rounded-xl text-center min-w-[100px] border border-slate-100"><span class="block text-2xl font-black text-brand-emerald">850+</span><span class="text-xs font-bold text-slate-400 uppercase">Daily Meals</span></div>
+                            <div class="bg-slate-50 p-4 rounded-xl text-center min-w-[100px] border border-slate-100"><span class="block text-2xl font-black text-brand-emerald">15</span><span class="text-xs font-bold text-slate-400 uppercase">Cooks</span></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-end mb-6"><h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">Kitchen Inventory Needs <span class="px-2 py-0.5 bg-emerald-100 text-brand-emerald text-[10px] rounded-full uppercase">10 Items</span></h2><button class="text-sm font-bold text-brand-emerald hover:underline">Filter Priority ▼</button></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-brand-emerald transition-all group flex flex-col h-full"><div class="mb-auto"><span class="inline-block px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold uppercase rounded mb-2">Critical</span><h3 class="text-lg font-bold text-slate-800">Refined Oil (15L Tin)</h3><p class="text-sm text-slate-500 mb-4">Need: 10 Tins</p></div><button class="w-full py-2 bg-white border border-brand-emerald text-brand-emerald rounded-lg text-sm font-bold hover:bg-brand-emerald hover:text-white transition-colors">Donate Quantity</button></div>
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-brand-emerald transition-all group flex flex-col h-full"><div class="mb-auto"><span class="inline-block px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold uppercase rounded mb-2">Critical</span><h3 class="text-lg font-bold text-slate-800">Commercial LPG</h3><p class="text-sm text-slate-500 mb-4">Need: 5 Cylinders</p></div><button class="w-full py-2 bg-white border border-brand-emerald text-brand-emerald rounded-lg text-sm font-bold hover:bg-brand-emerald hover:text-white transition-colors">Donate Cost</button></div>
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-brand-emerald transition-all group flex flex-col h-full"><div class="mb-auto"><span class="inline-block px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold uppercase rounded mb-2">Critical</span><h3 class="text-lg font-bold text-slate-800">Fresh Potatoes</h3><p class="text-sm text-slate-500 mb-4">Need: 100 kg</p></div><button class="w-full py-2 bg-white border border-brand-emerald text-brand-emerald rounded-lg text-sm font-bold hover:bg-brand-emerald hover:text-white transition-colors">Donate Quantity</button></div>
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:border-brand-emerald transition-all group flex flex-col h-full"><div class="mb-auto"><span class="inline-block px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold uppercase rounded mb-2">Medium</span><h3 class="text-lg font-bold text-slate-800">Disposal Plates</h3><p class="text-sm text-slate-500 mb-4">Need: 2000 Units</p></div><button class="w-full py-2 bg-white border border-brand-emerald text-brand-emerald rounded-lg text-sm font-bold hover:bg-brand-emerald hover:text-white transition-colors">Donate Quantity</button></div>
+                    </div>
+                    <div class="flex justify-between items-end mb-6"><h2 class="text-xl font-bold text-slate-800">Impact Stories</h2><button class="text-sm font-bold text-slate-400 hover:text-slate-600">View Reports ></button></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-brand-emerald overflow-hidden flex flex-col"><div class="p-6"><div class="flex items-center gap-2 text-xs font-bold text-brand-emerald uppercase mb-2"><i data-lucide="clock" class="w-3 h-3"></i> Ongoing • Daily Service</div><h3 class="text-lg font-bold text-slate-800 mb-2">"Annapurna" Tiffin Seva</h3><p class="text-sm text-slate-500 leading-relaxed mb-4">Delivering hot, salt-restricted tiffins to 120+ abandoned senior citizens in Rasayani and Mohopada every afternoon.</p><div class="flex gap-2"><span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded">👵 120 Seniors</span><span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded">🛵 4 Riders</span></div></div></div>
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-brand-emerald overflow-hidden flex flex-col"><div class="p-6"><div class="flex items-center gap-2 text-xs font-bold text-brand-emerald uppercase mb-2"><i data-lucide="sun" class="w-3 h-3"></i> Sept 2024 • Festival Support</div><h3 class="text-lg font-bold text-slate-800 mb-2">Ganpati Visarjan Stall</h3><p class="text-sm text-slate-500 leading-relaxed mb-4">Set up a free food stall serving Masala Rice and Sheera to 3,000+ devotees and police personnel during the 7th-day immersion.</p><div class="flex gap-2"><span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded">🍛 3,200 Plates</span><span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded">👮 50 Police Staff</span></div></div></div>
+                    </div>
+                </div>
+            `,
+            "default": `
+                <div class="h-full w-full border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-slate-400 gap-4 anim-slide-in">
+                    <i data-lucide="layout-dashboard" class="w-16 h-16 opacity-50 text-brand-emerald"></i>
+                    <div class="text-center">
+                        <p class="text-lg font-bold text-slate-600">Select a Dashboard</p>
+                        <p class="text-sm">Click "Pillai Food Drive" or "Rasayani Community Kitchen" to view portfolios.</p>
+                    </div>
+                </div>
+            `
+        };
+
+        let isSidebarOpen = false;
+        let activeSection = 'homeland'; 
+        let activeSubTab = null;
+
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        const sidebarContent = document.getElementById('sidebar-content');
+        const mainContent = document.getElementById('main-content');
+
+        function init() {
+            lucide.createIcons();
+            renderSidebar();
+            renderContent('default');
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+
+        function toggleSidebar() {
+            isSidebarOpen = !isSidebarOpen;
+            if (isSidebarOpen) {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+                setTimeout(() => backdrop.classList.remove('opacity-0'), 10);
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.add('opacity-0');
+                setTimeout(() => backdrop.classList.add('hidden'), 300);
+            }
+        }
+
+        function toggleSection(key) {
+            if (activeSection === key) { activeSection = null; } else { activeSection = key; }
+            renderSidebar();
+        }
+
+        function setActiveSub(subName) {
+            activeSubTab = subName;
+            renderSidebar();
+            renderContent(subName);
+        }
+
+        function renderContent(subName) {
+            const contentHTML = pageContent[subName] || pageContent["default"];
+            mainContent.innerHTML = contentHTML;
+            lucide.createIcons();
+        }
+
+        function renderSidebar() {
+            let html = '';
+            for (const [key, section] of Object.entries(navData)) {
+                const isOpen = activeSection === key;
+                const containerClass = isOpen ? 'bg-brand-light border-l-4 border-brand-emerald' : 'hover:bg-slate-50 border-l-4 border-transparent';
+                const textClass = isOpen ? 'text-brand-emerald font-bold' : 'text-slate-600 font-semibold';
+                const iconClass = isOpen ? 'text-brand-emerald' : 'text-slate-400';
+                const chevron = isOpen ? 'chevron-down' : 'chevron-right';
+
+                html += `
+                <div class="mb-2">
+                    <button onclick="toggleSection('${key}')" class="w-full flex items-center justify-between px-4 py-3 text-sm transition-all duration-200 rounded-r-lg ${containerClass}">
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="${section.icon}" class="w-5 h-5 ${iconClass}"></i>
+                            <span class="${textClass} tracking-wide">${section.label}</span>
+                        </div>
+                        <i data-lucide="${chevron}" class="w-4 h-4 ${iconClass}"></i>
+                    </button>
+                    ${isOpen ? `
+                        <div class="ml-4 pl-4 border-l-2 border-emerald-100 my-2 space-y-1 submenu-anim">
+                            ${section.subTabs.map(sub => {
+                                const isSubActive = activeSubTab === sub;
+                                const subClass = isSubActive ? 'text-brand-emerald font-bold bg-emerald-50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50';
+                                return `<button onclick="setActiveSub('${sub}')" class="w-full text-left px-4 py-2 text-sm rounded-lg transition-colors ${subClass}">${sub}</button>`;
+                            }).join('')}
+                        </div>
+                    ` : ''}
+                </div>`;
+            }
+            sidebarContent.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock-time').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('clock-date').innerText = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        init();
+    </script>
+</body>
+</html>

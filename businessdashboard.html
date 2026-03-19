@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>FoodIQ — Business Performance</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #ff7a20;
+      --primary-hover: #e56a00;
+      --bg: #f3f4f6;
+      --card-bg: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --radius: 14px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 10px rgba(0,0,0,0.06);
+    }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: "Inter", sans-serif; }
+    .container { max-width: 1280px; margin: auto; padding: 24px; }
+    .header { background: white; padding: 18px 24px; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon { width: 44px; height: 44px; background: var(--primary); border-radius: 12px; color: white; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; }
+    .brand-text h1 { margin: 0; font-size: 20px; font-weight: 700; font-family: "Poppins", sans-serif; }
+    .brand-text span { font-size: 13px; color: var(--muted); }
+    button.btn { padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: 0.2s; }
+    .btn-primary { background: var(--primary); color: white; box-shadow: 0 2px 4px rgba(255,122,32,0.2); }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-outline { background: white; border: 1px solid var(--primary); color: var(--primary); }
+    .hero-kpi { background: white; border-radius: var(--radius); border: 1px solid var(--border); padding: 28px; box-shadow: var(--shadow-md); margin-bottom: 24px; text-align: center; }
+    .hero-title { font-size: 15px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600; }
+    .hero-value { font-family: "Poppins"; font-size: 46px; margin-top: 6px; font-weight: 700; color: var(--primary); }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .kpi-card { background: white; border: 1px solid var(--border); padding: 20px; border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+    .kpi-label { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+    .kpi-value { font-size: 26px; margin-top: 6px; font-weight: 700; font-family: "Poppins"; }
+    .section-title { font-family: "Poppins"; font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+    .chart-card { background: white; padding: 22px; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-sm); margin-bottom: 26px; }
+    .two-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 28px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
+    th { text-transform: uppercase; font-size: 12px; color: var(--muted); font-weight: 700; }
+    .customer-scroll { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 10px; }
+    .customer-card { min-width: 160px; background: white; padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+    .customer-name { font-size: 15px; font-weight: 700; font-family: "Poppins"; }
+    .customer-spend { margin-top: 4px; color: var(--primary); font-weight: 600; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="brand">
+      <div class="brand-icon">📊</div>
+      <div class="brand-text">
+        <h1>Business Intelligence</h1>
+        <span>Revenue & Profit Dashboard</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;position:relative">
+      <!-- Notification Bell -->
+      <div style="position:relative;cursor:pointer" onclick="toggleNotifPanel()">
+        <span style="font-size:22px">🔔</span>
+        <span id="notif-badge" style="display:none;position:absolute;top:-4px;right:-6px;
+          background:#ef4444;color:white;border-radius:50%;width:18px;height:18px;
+          font-size:10px;font-weight:700;line-height:18px;text-align:center">0</span>
+      </div>
+      <!-- Notification Panel -->
+      <div id="notif-panel" style="display:none;position:absolute;top:38px;right:120px;
+        width:300px;background:white;border-radius:12px;border:1px solid #e5e7eb;
+        box-shadow:0 10px 40px rgba(0,0,0,0.12);z-index:1000;max-height:320px;overflow-y:auto">
+        <div style="padding:12px 16px;font-weight:700;font-size:14px;border-bottom:1px solid #f3f4f6;
+          display:flex;justify-content:space-between;align-items:center">
+          NGO Alerts
+          <span onclick="toggleNotifPanel()" style="cursor:pointer;color:#9ca3af;font-size:18px">&times;</span>
+        </div>
+        <div id="notif-list"></div>
+      </div>
+      <button class="btn btn-outline" id="exportPdf">Export PDF</button>
+      <button class="btn btn-primary" onclick="loadStats()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div class="hero-kpi">
+    <div class="hero-title">Total Revenue</div>
+    <div class="hero-value" id="heroRevenue">₹ --</div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Net Profit</div>
+      <div class="kpi-value" id="kpiProfit">--</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Profit Margin</div>
+      <div class="kpi-value" id="kpiMargin">--%</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Avg Order Value</div>
+      <div class="kpi-value" id="kpiAov">--</div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="section-title">Revenue Over Time</div>
+    <canvas id="chartRevenue"></canvas>
+  </div>
+
+  <div class="two-grid">
+    <div class="chart-card">
+      <div class="section-title">Profit Breakdown</div>
+      <canvas id="chartProfit"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="section-title">Category Revenue</div>
+      <canvas id="chartCategory"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="section-title">Top Products by Profit</div>
+    <table id="productTable">
+      <thead>
+        <tr><th>Product</th><th>Revenue</th><th>Profit</th><th>Margin</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="chart-card">
+    <div class="section-title">Top Customers</div>
+    <div class="customer-scroll" id="customerScroll"></div>
+  </div>
+</div>
+
+<script>
+// Store chart instances so we can destroy before re-creating on refresh
+let chartRevInst = null, chartProfInst = null, chartCatInst = null;
+let lastData = null;
+
+async function loadStats() {
+  const refreshBtn = document.querySelector('.btn-primary');
+  refreshBtn.disabled = true;
+  refreshBtn.innerText = '⏳ Loading...';
+
+  try {
+    const res = await fetch('http://127.0.0.1:5000/api/business_stats');
+    if (!res.ok) throw new Error("API returned " + res.status);
+    const data = await res.json();
+    lastData = data;
+
+    // KPIs
+    document.getElementById("heroRevenue").innerText = "₹ " + (data.total_revenue || 0).toFixed(2);
+    document.getElementById("kpiProfit").innerText   = "₹ " + (data.net_profit || 0).toFixed(2);
+    document.getElementById("kpiMargin").innerText   = (data.profit_margin || 0).toFixed(2) + "%";
+    document.getElementById("kpiAov").innerText      = "₹ " + (data.avg_order_value || 0).toFixed(2);
+
+    // FIX: Destroy old charts before creating new ones (fixes refresh crash)
+    if (chartRevInst)  { chartRevInst.destroy();  chartRevInst  = null; }
+    if (chartProfInst) { chartProfInst.destroy(); chartProfInst = null; }
+    if (chartCatInst)  { chartCatInst.destroy();  chartCatInst  = null; }
+
+    chartRevInst = new Chart(document.getElementById("chartRevenue"), {
+      type: "line",
+      data: {
+        labels: data.period_labels || [],
+        datasets: [{ label: "Revenue", data: data.period_values || [],
+          borderColor: "#ff7a20", backgroundColor: "rgba(255,122,32,0.1)",
+          borderWidth: 3, tension: 0.3, fill: true }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    chartProfInst = new Chart(document.getElementById("chartProfit"), {
+      type: "bar",
+      data: {
+        labels: ["Revenue", "Expenses", "Net Profit"],
+        datasets: [{ data: [data.total_revenue||0, data.total_expenses||0, data.net_profit||0],
+          backgroundColor: ["#ff7a20","#9ca3af","#10b981"], borderRadius: 6 }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    chartCatInst = new Chart(document.getElementById("chartCategory"), {
+      type: "doughnut",
+      data: {
+        labels: Object.keys(data.revenue_by_category || {}),
+        datasets: [{ data: Object.values(data.revenue_by_category || {}),
+          backgroundColor: ["#ff7a20","#ff9d5c","#ffc9a5","#d26700"] }]
+      },
+      options: { responsive: true }
+    });
+
+    // Products table
+    const tbody = document.querySelector("#productTable tbody");
+    tbody.innerHTML = "";
+    (data.top_products || []).forEach(item => {
+      tbody.insertAdjacentHTML("beforeend", `<tr>
+        <td>${item.name}</td>
+        <td>₹ ${Number(item.revenue||0).toFixed(2)}</td>
+        <td>₹ ${Number(item.profit||0).toFixed(2)}</td>
+        <td>${Number(item.margin||0).toFixed(2)}%</td>
+      </tr>`);
+    });
+
+    // Top customers
+    const scroll = document.getElementById("customerScroll");
+    scroll.innerHTML = "";
+    (data.top_customers || []).forEach(c => {
+      scroll.insertAdjacentHTML("beforeend",
+        `<div class="customer-card">
+           <div class="customer-name">${c.name}</div>
+           <div class="customer-spend">₹ ${Number(c.spend||0).toFixed(2)}</div>
+         </div>`);
+    });
+
+    refreshBtn.innerText = '✓ Updated';
+    setTimeout(() => { refreshBtn.innerText = '↻ Refresh'; refreshBtn.disabled = false; }, 1500);
+
+    // Update notification badge with NGO alerts count
+    updateNotifications();
+
+  } catch (err) {
+    console.error(err);
+    refreshBtn.innerText = '↻ Refresh';
+    refreshBtn.disabled = false;
+    showToast("Could not reach backend. Is the server running?", true);
+  }
+}
+
+// ── NOTIFICATION BELL ──────────────────────────────────────────────
+async function updateNotifications() {
+  try {
+    const res = await fetch('http://127.0.0.1:5000/api/ngo_alerts?status=pending');
+    const alerts = await res.json();
+    const badge = document.getElementById('notif-badge');
+    if (alerts.length > 0) {
+      badge.innerText = alerts.length;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch(e) { /* silent */ }
+}
+
+function toggleNotifPanel() {
+  const panel = document.getElementById('notif-panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  if (panel.style.display === 'block') loadNotifPanel();
+}
+
+async function loadNotifPanel() {
+  const list = document.getElementById('notif-list');
+  list.innerHTML = '<div style="padding:12px;color:#6b7280">Loading...</div>';
+  try {
+    const res = await fetch('http://127.0.0.1:5000/api/ngo_alerts?status=pending');
+    const alerts = await res.json();
+    if (!alerts.length) {
+      list.innerHTML = '<div style="padding:12px;color:#6b7280">No pending alerts</div>';
+      return;
+    }
+    list.innerHTML = alerts.map(a => `
+      <div style="padding:12px;border-bottom:1px solid #f3f4f6">
+        <div style="font-weight:700;font-size:14px">${a.item_name} — ${a.quantity_kg} kg</div>
+        <div style="font-size:12px;color:#6b7280;margin-top:2px">${new Date(a.created_at).toLocaleString()}</div>
+        <div style="font-size:11px;color:#10b981;margin-top:2px;font-weight:600">● Awaiting NGO pickup</div>
+      </div>`).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="padding:12px;color:#ef4444">Failed to load alerts</div>';
+  }
+}
+
+// ── PDF EXPORT ──────────────────────────────────────────────────────
+document.getElementById('exportPdf').addEventListener('click', async function() {
+  if (!lastData) { showToast("Load dashboard first", true); return; }
+  this.disabled = true; this.innerText = '⏳ Generating...';
+
+  if (!window.jspdf) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+    s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const d = lastData;
+  const today = new Date().toLocaleDateString('en-IN');
+
+  // Header bar
+  doc.setFillColor(255, 122, 32);
+  doc.rect(0, 0, 210, 26, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(18); doc.setFont('helvetica','bold');
+  doc.text('FoodIQ — Business Report', 14, 17);
+  doc.setFontSize(10); doc.setFont('helvetica','normal');
+  doc.text(today, 170, 17);
+
+  // KPI summary boxes
+  doc.setTextColor(30,30,30);
+  const kpis = [
+    ['Total Revenue',   '₹ ' + (d.total_revenue||0).toFixed(2)],
+    ['Net Profit',      '₹ ' + (d.net_profit||0).toFixed(2)],
+    ['Profit Margin',   (d.profit_margin||0).toFixed(2) + '%'],
+    ['Avg Order Value', '₹ ' + (d.avg_order_value||0).toFixed(2)],
+  ];
+  let x = 14; const y0 = 38;
+  kpis.forEach(([label, val]) => {
+    doc.setFillColor(249,250,251); doc.roundedRect(x, y0, 43, 22, 3, 3, 'F');
+    doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text(label, x+4, y0+8);
+    doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(255,122,32);
+    doc.text(val, x+4, y0+18);
+    doc.setFont('helvetica','normal'); doc.setTextColor(30,30,30);
+    x += 46;
+  });
+
+  // Top Products table
+  doc.setFontSize(13); doc.setFont('helvetica','bold'); doc.setTextColor(30,30,30);
+  doc.text('Top Products by Profit', 14, 74);
+  doc.autoTable({
+    startY: 78,
+    head: [['Product', 'Revenue', 'Profit', 'Margin']],
+    body: (d.top_products||[]).map(p => [
+      p.name,
+      '₹ ' + Number(p.revenue||0).toFixed(2),
+      '₹ ' + Number(p.profit||0).toFixed(2),
+      Number(p.margin||0).toFixed(2) + '%'
+    ]),
+    headStyles: { fillColor: [255,122,32], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [249,250,251] },
+    styles: { fontSize: 10 },
+  });
+
+  // Top Customers table
+  const afterTable = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.text('Top Customers', 14, afterTable);
+  doc.autoTable({
+    startY: afterTable + 4,
+    head: [['Customer', 'Total Spend']],
+    body: (d.top_customers||[]).map(c => [c.name, '₹ ' + Number(c.spend||0).toFixed(2)]),
+    headStyles: { fillColor: [255,122,32], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [249,250,251] },
+    styles: { fontSize: 10 },
+  });
+
+  // Footer
+  const pages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8); doc.setTextColor(180,180,180);
+    doc.text('FoodIQ Business Intelligence  |  Confidential', 14, 290);
+    doc.text('Page ' + i + ' of ' + pages, 185, 290);
+  }
+
+  doc.save('FoodIQ_Business_' + today.replace(/\//g,'-') + '.pdf');
+  this.innerText = '✓ Downloaded';
+  setTimeout(() => { this.innerText = 'Export PDF'; this.disabled = false; }, 2000);
+});
+
+// ── TOAST ───────────────────────────────────────────────────────────
+function showToast(msg, isErr=false) {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;top:20px;right:20px;z-index:9999;padding:12px 20px;
+    border-radius:10px;font-size:14px;font-weight:600;color:white;
+    background:${isErr?'#ef4444':'#111827'};box-shadow:0 4px 20px rgba(0,0,0,0.15);
+    animation:slideIn .3s ease`;
+  t.innerText = msg;
+  const style = document.createElement('style');
+  style.innerText = '@keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}';
+  document.head.appendChild(style);
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+loadStats();
+setInterval(loadStats, 60000); // auto-refresh every 60s
+</script>
+</body>
+</html>

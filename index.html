@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FOODIQ - Surplus Food Management System</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+          
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-orange: #FF8C1A; /* Primary action button color (from image) */
+            --primary-green: #4CAF50; /* System theme color for lists/titles */
+            --logo-bg: #FF8C1A; /* Orange circle background */
+            --text-color: #333;
+            --bg-color: #f4f4f4;
+            --light-bg: #f8f8f8;
+            --header-height: 80px;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        /* --- Header Styling (Based on image_bfa861.png) --- */
+        .navbar {
+            display: flex;
+            align-items: center;
+            padding: 0 25px;
+            height: var(--header-height);
+            background: linear-gradient(to right, #ffffff, var(--light-bg));
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-radius: 8px 8px 0 0;
+        }
+
+        /* Hamburger Menu and Logo Group */
+        .header-left {
+            display: flex;
+            align-items: center;
+            flex-grow: 1; /* Allows the right side to push far right */
+        }
+        
+        .menu-icon {
+            font-size: 1.5em;
+            color: #777;
+            margin-right: 20px;
+            cursor: pointer;
+        }
+
+        .foodiq-logo {
+            display: flex;
+            align-items: center;
+            font-size: 1.6em;
+            font-weight: bold;
+            color: var(--text-color);
+            margin-right: 30px;
+        }
+
+        .logo-icon-bg {
+            background-color: var(--logo-bg);
+            color: white;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2em;
+            margin-right: 8px;
+        }
+        
+        .action-button {
+            background-color: var(--primary-orange);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.9em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(255, 140, 26, 0.3);
+            transition: background-color 0.2s;
+        }
+
+        .action-button:hover {
+            background-color: #e07b14;
+        }
+
+        .action-button i {
+            margin-right: 8px;
+        }
+
+
+        /* Header Right Side */
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px; /* Spacing between right-side elements */
+        }
+        
+        .support-box {
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 8px 15px;
+            border-radius: 20px;
+            color: #555;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .support-box:hover {
+            border-color: var(--primary-orange);
+        }
+
+        .support-box i {
+            margin-right: 8px;
+            font-size: 1.1em;
+            color: #999;
+        }
+
+        .notification-icon, .globe-icon {
+            font-size: 1.3em;
+            color: #777;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: var(--primary-orange); /* Red color for notification */
+            color: white;
+            border-radius: 50%;
+            padding: 2px 5px;
+            font-size: 0.6em;
+            font-weight: bold;
+            border: 1px solid white;
+        }
+
+
+        /* --- Main Content Styling --- */
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        h1 {
+            color: var(--primary-green);
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #666;
+        }
+
+        /* --- Map Area Styling --- */
+        #map-area {
+            margin-bottom: 30px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        #map {
+            height: 550px; /* Slightly taller map for better visibility */
+            width: 100%;
+        }
+
+        /* --- NGO List Styling --- */
+        .ngo-list-section h2 {
+            border-bottom: 2px solid var(--primary-green);
+            padding-bottom: 5px;
+            margin-bottom: 20px;
+            color: var(--primary-green);
+        }
+
+        #ngo-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .ngo-card {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border-left: 5px solid var(--primary-green);
+            transition: transform 0.2s;
+        }
+
+        .ngo-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .ngo-card h3 {
+            margin-top: 0;
+            color: var(--text-color);
+            font-size: 1.2em;
+        }
+
+        .ngo-card p {
+            margin: 5px 0;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .ngo-card .distance {
+            font-weight: bold;
+            color: var(--primary-green);
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="header-left">
+            <i class="fas fa-bars menu-icon" title="Menu"></i>
+            
+            <div class="foodiq-logo">
+                <span class="logo-icon-bg"><i class="fas fa-utensils"></i></span>
+                <span>FoodIQ</span>
+            </div>
+
+            <button class="action-button">
+                <i class="fas fa-plus"></i>LIST FOOD
+            </button>
+        </div>
+
+        <div class="header-right">
+            <div class="support-box">
+                <i class="fas fa-user-circle"></i>
+                ASK FOR SUPPORT
+            </div>
+
+            <div class="notification-icon">
+                <i class="fas fa-bell"></i>
+                <span class="badge">1</span> </div>
+            
+            <i class="fas fa-globe globe-icon" title="Language/Region"></i>
+        </div>
+    </header>
+
+    <main class="container">
+        <h1>Reduce Waste: Map Nearby NGOs in Panvel/Rasayani</h1>
+        <p class="subtitle">Use the map to locate the closest NGOs ready to accept your surplus food donation.</p>
+
+        <div id="map-area">
+                        <div id="map"></div>
+        </div>
+
+        <section class="ngo-list-section">
+            <h2>🌍 Available NGO Partners (Panvel/Rasayani Area)</h2>
+            <div id="ngo-list">
+                </div>
+        </section>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // --- 1. Map Setup ---
+            // Central coordinates for Rasayani, Panvel, Maharashtra, India
+            // Approx. Lat/Lng: 18.8950° N, 73.1810° E
+            const centralLat = 18.8950; 
+            const centralLng = 73.1810;
+            const initialZoom = 13; // Good zoom level for a local radius
+
+            // Initialize the map on the 'map' div
+            const map = L.map('map').setView([centralLat, centralLng], initialZoom);
+
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+            }).addTo(map);
+
+            // Add a marker for the food donation source (center point)
+            L.marker([centralLat, centralLng]).addTo(map)
+                .bindPopup('<b>Your Current Location (Rasayani)</b><br>Surplus Food Available Here!')
+                .openPopup();
+
+           // --- 2. Fetch NGOs from live backend ---
+let ngos = [];
+try {
+    const res = await fetch(
+        `http://127.0.0.1:5000/api/ngos/nearby?lat=${centralLat}&lng=${centralLng}&radius=25`
+    );
+    ngos = await res.json();
+} catch(e) {
+    console.warn('Backend offline, using fallback NGO data');
+    ngos = [
+        { name: "Rasayani Community Kitchen", lat: 18.88, lng: 73.185,
+          distance_km: 1.9, needs: "Dairy, Baked Goods" },
+        { name: "Navjeevan Food Bank", lat: 18.94, lng: 73.145,
+          distance_km: 7.0, needs: "Any non-expired food" },
+    ];
+}
+
+            // --- 3. Add NGO Markers and Populate List ---
+            const ngoListContainer = document.getElementById('ngo-list');
+            
+            ngos.forEach(ngo => {
+                // Custom Red Icon for NGOs
+                const ngoIcon = L.icon({
+                    iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                });
+
+                // Add marker to map
+                L.marker([ngo.lat, ngo.lng], { icon: ngoIcon }).addTo(map)
+                    .bindPopup(`
+                        <b>${ngo.name}</b><br>
+                        Distance: ${ngo.distance}<br>
+                        Needs: ${ngo.needs}<br>
+                        <button onclick="alert('Simulating Contact/Donation Link for ${ngo.name}')" style="margin-top: 5px; padding: 5px 10px; background-color: var(--primary-green); color: white; border: none; border-radius: 4px; cursor: pointer;">View Contact Details</button>
+                    `);
+
+                // Populate NGO List Card
+                const card = document.createElement('div');
+                card.className = 'ngo-card';
+                // In the ngos.forEach block, find the card innerHTML line and change:
+// ngo.distance  →  ngo.distance_km + ' km'
+
+card.innerHTML = `
+    <h3>${ngo.name}</h3>
+    <p><strong>Needs:</strong> ${ngo.needs}</p>
+    <p class="distance">Distance: ${ngo.distance_km} km</p>
+`;
+                ngoListContainer.appendChild(card);
+            });
+        });
+    </script>
+
+</body>
+</html>

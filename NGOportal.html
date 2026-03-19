@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoodIQ - NGO Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { font-family: "Inter", sans-serif; }
+        .theme-transition { transition: all 0.2s ease; }
+        #map { height: 340px; border-radius: 16px; overflow: hidden; z-index: 1; }
+        .alert-card { transition: all 0.2s ease; }
+        .alert-card:hover { transform: translateY(-2px); }
+        @keyframes pulse-green { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        .live-dot { animation: pulse-green 1.5s infinite; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { brand: { emerald:"#10b981", dark:"#064e3b", light:"#ecfdf5", accent:"#f97316" } } } }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+<!-- ── HEADER ──────────────────────────────────────────── -->
+<header class="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between sticky top-0 z-40 shadow-sm">
+    <div class="flex items-center gap-3">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-md">
+            <i data-lucide="heart-handshake" class="w-5 h-5"></i>
+        </div>
+        <div>
+            <span class="text-xl font-black text-slate-800 tracking-tight">FoodIQ</span>
+            <span class="ml-2 text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full">NGO Portal</span>
+        </div>
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 text-sm text-slate-500">
+            <span class="w-2 h-2 bg-emerald-500 rounded-full live-dot"></span>
+            <span id="clock-time" class="font-bold text-slate-700"></span>
+        </div>
+        <div class="flex items-center gap-2 bg-slate-100 rounded-full px-3 py-1.5">
+            <div class="w-7 h-7 bg-emerald-500 rounded-full flex items-center justify-center text-white text-xs font-bold">NG</div>
+            <span class="text-sm font-semibold text-slate-700">NGO User</span>
+        </div>
+        <a href="/" class="text-sm font-bold text-slate-400 hover:text-slate-700 theme-transition">← Logout</a>
+    </div>
+</header>
+
+<!-- ── MAIN LAYOUT ─────────────────────────────────────── -->
+<div class="flex">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white border-r border-slate-100 min-h-screen p-4 shrink-0">
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Navigation</p>
+        <nav class="space-y-1">
+            <button onclick="showSection('alerts')" id="nav-alerts"
+                class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-left transition-all bg-emerald-50 text-emerald-700 border border-emerald-100">
+                <i data-lucide="bell-ring" class="w-4 h-4"></i> Food Alerts
+                <span id="alerts-badge" class="ml-auto bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">0</span>
+            </button>
+            <button onclick="showSection('map')" id="nav-map"
+                class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-left transition-all text-slate-600 hover:bg-slate-50">
+                <i data-lucide="map-pin" class="w-4 h-4"></i> NGO Map
+            </button>
+            <button onclick="showSection('food_drive')" id="nav-food_drive"
+                class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-left transition-all text-slate-600 hover:bg-slate-50">
+                <i data-lucide="home" class="w-4 h-4"></i> Pillai Food Drive
+            </button>
+            <button onclick="showSection('community_kitchen')" id="nav-community_kitchen"
+                class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-left transition-all text-slate-600 hover:bg-slate-50">
+                <i data-lucide="utensils" class="w-4 h-4"></i> Community Kitchen
+            </button>
+            <button onclick="showSection('history')" id="nav-history"
+                class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-left transition-all text-slate-600 hover:bg-slate-50">
+                <i data-lucide="history" class="w-4 h-4"></i> Pickup History
+            </button>
+        </nav>
+
+        <!-- Quick Stats -->
+        <div class="mt-8">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Quick Stats</p>
+            <div class="space-y-2">
+                <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                    <div class="text-xs text-slate-400 font-medium">Pending Alerts</div>
+                    <div class="text-xl font-black text-emerald-500" id="stat-pending">--</div>
+                </div>
+                <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                    <div class="text-xs text-slate-400 font-medium">Accepted Today</div>
+                    <div class="text-xl font-black text-slate-700" id="stat-accepted">--</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-8 overflow-y-auto" id="main-content">
+        <div class="text-center py-20 text-slate-400">
+            <i data-lucide="loader" class="w-8 h-8 mx-auto mb-3 animate-spin opacity-40"></i>
+            <p>Loading...</p>
+        </div>
+    </main>
+</div>
+
+<script>
+const API = 'http://127.0.0.1:5000/api';
+const mainContent = document.getElementById('main-content');
+
+// ── CLOCK ───────────────────────────────────────────────
+function updateClock() {
+    document.getElementById('clock-time').innerText =
+        new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ── NAV ─────────────────────────────────────────────────
+function showSection(id) {
+    document.querySelectorAll('.nav-btn').forEach(b => {
+        b.className = 'nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-left transition-all text-slate-600 hover:bg-slate-50';
+    });
+    const active = document.getElementById('nav-' + id);
+    if (active) active.className = 'nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-left transition-all bg-emerald-50 text-emerald-700 border border-emerald-100';
+
+    const sections = { alerts, map: mapSection, food_drive: foodDrive, community_kitchen: communityKitchen, history: pickupHistory };
+    if (sections[id]) sections[id]();
+}
+
+// ── FOOD ALERTS ─────────────────────────────────────────
+async function alerts() {
+    mainContent.innerHTML = `
+        <div class="max-w-4xl mx-auto">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h1 class="text-2xl font-black text-slate-800">🔔 Live Food Alerts</h1>
+                    <p class="text-slate-500 text-sm mt-1">Surplus food from canteens waiting for pickup</p>
+                </div>
+                <button onclick="alerts()" class="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-600 transition-all">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Refresh
+                </button>
+            </div>
+            <div id="alerts-list" class="space-y-4">
+                <div class="text-center py-12 text-slate-400">
+                    <i data-lucide="loader" class="w-8 h-8 mx-auto mb-3 animate-spin opacity-40"></i>
+                    <p>Fetching alerts...</p>
+                </div>
+            </div>
+        </div>`;
+    lucide.createIcons();
+
+    try {
+        const [pendRes, accRes] = await Promise.all([
+            fetch(API + '/ngo_alerts?status=pending'),
+            fetch(API + '/ngo_alerts?status=accepted')
+        ]);
+        const pending  = await pendRes.json();
+        const accepted = await accRes.json();
+
+        document.getElementById('stat-pending').innerText  = pending.length;
+        document.getElementById('stat-accepted').innerText = accepted.length;
+        document.getElementById('alerts-badge').innerText  = pending.length;
+
+        const list = document.getElementById('alerts-list');
+
+        if (!pending.length) {
+            list.innerHTML = `
+                <div class="bg-white rounded-2xl border border-slate-100 p-12 text-center">
+                    <div class="text-5xl mb-4">🎉</div>
+                    <h3 class="text-lg font-bold text-slate-700 mb-2">All Clear!</h3>
+                    <p class="text-slate-400 text-sm">No pending food alerts right now. Check back soon.</p>
+                </div>`;
+            return;
+        }
+
+        list.innerHTML = pending.map(a => {
+            const age = Math.round((Date.now() - new Date(a.created_at)) / 60000);
+            const ageStr = age < 60 ? age + ' min ago' : Math.round(age/60) + 'h ago';
+            const urgent = age > 120;
+            return `
+            <div class="alert-card bg-white rounded-2xl border ${urgent ? 'border-red-200 shadow-red-50' : 'border-slate-100'} shadow-sm p-5">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 ${urgent ? 'bg-red-100' : 'bg-emerald-100'} rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
+                            🍱
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <h3 class="font-black text-slate-800 text-lg">${a.item_name}</h3>
+                                ${urgent ? '<span class="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full uppercase">Urgent</span>' : '<span class="text-[10px] font-bold bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full uppercase">Fresh</span>'}
+                            </div>
+                            <div class="flex items-center gap-4 text-sm text-slate-500">
+                                <span class="flex items-center gap-1"><i data-lucide="package" class="w-3.5 h-3.5"></i> <strong class="text-slate-700">${a.quantity_kg} kg</strong> available</span>
+                                <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3.5 h-3.5"></i> ${ageStr}</span>
+                                <span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Lat ${a.lat}, Lng ${a.lng}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="acceptAlert(${a.id}, this)"
+                        class="shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all active:scale-95 flex items-center gap-2">
+                        <i data-lucide="check" class="w-4 h-4"></i> Accept
+                    </button>
+                </div>
+            </div>`;
+        }).join('');
+        lucide.createIcons();
+
+    } catch(e) {
+        document.getElementById('alerts-list').innerHTML = `
+            <div class="bg-red-50 border border-red-100 rounded-2xl p-6 text-center">
+                <p class="text-red-600 font-semibold text-sm">Could not connect to server. Is the backend running?</p>
+            </div>`;
+    }
+}
+
+async function acceptAlert(id, btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Accepting...';
+    lucide.createIcons();
+    try {
+        await fetch(API + '/ngo_alerts/' + id + '/accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ngo_name: 'Rasayani Community Kitchen' })
+        });
+        // Remove card with animation
+        const card = btn.closest('.alert-card');
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(20px)';
+        setTimeout(() => { card.remove(); }, 300);
+        showToast('✓ Alert accepted! Proceed to pickup location.');
+        // Update badge
+        const badge = document.getElementById('alerts-badge');
+        const count = Math.max(0, parseInt(badge.innerText || '0') - 1);
+        badge.innerText = count;
+        document.getElementById('stat-pending').innerText = count;
+    } catch(e) {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Accept';
+        lucide.createIcons();
+        showToast('Failed to accept. Try again.', true);
+    }
+}
+
+// ── MAP ──────────────────────────────────────────────────
+async function mapSection() {
+    mainContent.innerHTML = `
+        <div class="max-w-5xl mx-auto">
+            <div class="mb-6">
+                <h1 class="text-2xl font-black text-slate-800">🗺️ NGO Network Map</h1>
+                <p class="text-slate-500 text-sm mt-1">All registered NGO partners in the Rasayani / Panvel area</p>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-6">
+                <div id="map"></div>
+            </div>
+            <div id="ngo-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>`;
+    lucide.createIcons();
+
+    // Init map
+    const map = L.map('map').setView([18.895, 73.181], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // You are here marker
+    L.marker([18.895, 73.181]).addTo(map)
+        .bindPopup('<b>📍 Your Location (Rasayani)</b>').openPopup();
+
+    try {
+        const res  = await fetch(API + '/ngos/nearby?lat=18.895&lng=73.181&radius=30');
+        const ngos = await res.json();
+
+        const greenIcon = L.icon({
+            iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+            iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]
+        });
+
+        const cards = document.getElementById('ngo-cards');
+        ngos.forEach(ngo => {
+            L.marker([ngo.lat, ngo.lng], { icon: greenIcon }).addTo(map)
+                .bindPopup(`<b>${ngo.name}</b><br>${ngo.address}<br><i>${ngo.needs}</i><br><b>${ngo.distance_km} km away</b>`);
+
+            cards.insertAdjacentHTML('beforeend', `
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover:border-emerald-200 transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">🏠</div>
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm leading-tight">${ngo.name}</h3>
+                            <p class="text-xs text-slate-400">${ngo.distance_km} km away</p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-2"><strong>Needs:</strong> ${ngo.needs}</p>
+                    <p class="text-xs text-slate-500 mb-3"><strong>Capacity:</strong> ${ngo.capacity_kg} kg</p>
+                    <p class="text-xs text-emerald-600 font-semibold">${ngo.contact}</p>
+                </div>`);
+        });
+
+    } catch(e) {
+        document.getElementById('ngo-cards').innerHTML =
+            '<p class="text-red-500 text-sm col-span-3">Could not load NGO data from server.</p>';
+    }
+}
+
+// ── FOOD DRIVE ───────────────────────────────────────────
+function foodDrive() {
+    mainContent.innerHTML = `
+        <div class="max-w-4xl mx-auto">
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 mb-8 flex justify-between items-start">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-3 py-1 bg-orange-50 text-orange-500 text-xs font-bold rounded-full mb-3">
+                        ✅ Campus Initiative
+                    </div>
+                    <h1 class="text-3xl font-black text-slate-800 mb-2">Pillai Food Drive (CSD)</h1>
+                    <p class="text-slate-500 text-sm">Pillai Campus, New Panvel · Community Service Day '25</p>
+                    <p class="text-slate-600 mt-3 max-w-xl text-sm leading-relaxed">Annual mega-collection drive by students and faculty of Pillai Group of Institutions to support 40+ local NGOs.</p>
+                </div>
+                <div class="flex gap-3 shrink-0">
+                    <div class="bg-emerald-50 p-4 rounded-xl text-center border border-emerald-100"><span class="block text-2xl font-black text-emerald-500">500+</span><span class="text-xs font-bold text-slate-400">Volunteers</span></div>
+                    <div class="bg-emerald-50 p-4 rounded-xl text-center border border-emerald-100"><span class="block text-2xl font-black text-emerald-500">40</span><span class="text-xs font-bold text-slate-400">Partners</span></div>
+                </div>
+            </div>
+            <h2 class="text-lg font-bold text-slate-800 mb-4">Collection Targets</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                ${[['Rice (5kg Bags)','500 Bags','High Priority','red'],
+                   ['Dal / Pulses','200 kg','High Priority','red'],
+                   ['Cooking Oil (1L)','300 Bottles','High Priority','red'],
+                   ['Stationery Kits','500 Sets','Medium','amber']].map(([name,target,priority,color]) => `
+                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
+                    <span class="text-[10px] font-bold bg-${color}-100 text-${color}-600 px-2 py-0.5 rounded-full self-start mb-3">${priority}</span>
+                    <h3 class="font-bold text-slate-800 text-sm mb-1">${name}</h3>
+                    <p class="text-xs text-slate-400 mb-3">Target: ${target}</p>
+                    <button class="mt-auto w-full py-2 border border-emerald-500 text-emerald-600 rounded-lg text-xs font-bold hover:bg-emerald-500 hover:text-white transition-colors">Drop at Counter</button>
+                </div>`).join('')}
+            </div>
+        </div>`;
+    lucide.createIcons();
+}
+
+// ── COMMUNITY KITCHEN ────────────────────────────────────
+function communityKitchen() {
+    mainContent.innerHTML = `
+        <div class="max-w-4xl mx-auto">
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 mb-8 flex justify-between items-start">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-3 py-1 bg-orange-50 text-orange-500 text-xs font-bold rounded-full mb-3">✅ Verified Kitchen</div>
+                    <h1 class="text-3xl font-black text-slate-800 mb-2">Rasayani Community Kitchen</h1>
+                    <p class="text-slate-500 text-sm">Mohopada Market, Rasayani · +91 99210 XXXXX</p>
+                    <p class="text-slate-600 mt-3 max-w-xl text-sm leading-relaxed">Centralized kitchen providing freshly cooked meals to industrial workers, senior citizens, and slum dwellers.</p>
+                </div>
+                <div class="flex gap-3 shrink-0">
+                    <div class="bg-emerald-50 p-4 rounded-xl text-center border border-emerald-100"><span class="block text-2xl font-black text-emerald-500">850+</span><span class="text-xs font-bold text-slate-400">Daily Meals</span></div>
+                    <div class="bg-emerald-50 p-4 rounded-xl text-center border border-emerald-100"><span class="block text-2xl font-black text-emerald-500">15</span><span class="text-xs font-bold text-slate-400">Cooks</span></div>
+                </div>
+            </div>
+            <h2 class="text-lg font-bold text-slate-800 mb-4">Kitchen Inventory Needs</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                ${[['Refined Oil (15L Tin)','10 Tins','Critical','red'],
+                   ['Commercial LPG','5 Cylinders','Critical','red'],
+                   ['Fresh Potatoes','100 kg','Critical','red'],
+                   ['Disposal Plates','2000 Units','Medium','amber']].map(([name,need,priority,color]) => `
+                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
+                    <span class="text-[10px] font-bold bg-${color}-100 text-${color}-600 px-2 py-0.5 rounded-full self-start mb-3">${priority}</span>
+                    <h3 class="font-bold text-slate-800 text-sm mb-1">${name}</h3>
+                    <p class="text-xs text-slate-400 mb-3">Need: ${need}</p>
+                    <button class="mt-auto w-full py-2 border border-emerald-500 text-emerald-600 rounded-lg text-xs font-bold hover:bg-emerald-500 hover:text-white transition-colors">Donate</button>
+                </div>`).join('')}
+            </div>
+        </div>`;
+    lucide.createIcons();
+}
+
+// ── PICKUP HISTORY ───────────────────────────────────────
+async function pickupHistory() {
+    mainContent.innerHTML = `
+        <div class="max-w-3xl mx-auto">
+            <h1 class="text-2xl font-black text-slate-800 mb-6">📋 Pickup History</h1>
+            <div id="history-list" class="space-y-3">
+                <div class="text-center py-10 text-slate-400">
+                    <i data-lucide="loader" class="w-6 h-6 mx-auto mb-2 animate-spin opacity-40"></i>
+                    <p class="text-sm">Loading...</p>
+                </div>
+            </div>
+        </div>`;
+    lucide.createIcons();
+
+    try {
+        const res     = await fetch(API + '/ngo_alerts?status=accepted');
+        const history = await res.json();
+        const list    = document.getElementById('history-list');
+
+        if (!history.length) {
+            list.innerHTML = '<div class="bg-white rounded-2xl border p-8 text-center text-slate-400 text-sm">No pickups accepted yet.</div>';
+            return;
+        }
+
+        list.innerHTML = history.map(a => `
+            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">✅</div>
+                    <div>
+                        <div class="font-bold text-slate-800">${a.item_name} — ${a.quantity_kg} kg</div>
+                        <div class="text-xs text-slate-400">${new Date(a.created_at).toLocaleString()}</div>
+                    </div>
+                </div>
+                <span class="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">Collected</span>
+            </div>`).join('');
+
+    } catch(e) {
+        document.getElementById('history-list').innerHTML =
+            '<p class="text-red-500 text-sm text-center">Could not load history.</p>';
+    }
+}
+
+// ── TOAST ────────────────────────────────────────────────
+function showToast(msg, isErr=false) {
+    const t = document.createElement('div');
+    t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:9999;padding:14px 20px;
+        border-radius:14px;font-size:14px;font-weight:600;color:white;
+        background:${isErr?'#ef4444':'#10b981'};box-shadow:0 8px 30px rgba(0,0,0,0.15);
+        transition:all .3s ease;transform:translateY(0)`;
+    t.innerText = msg;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity='0'; t.style.transform='translateY(10px)'; }, 2500);
+    setTimeout(() => t.remove(), 2800);
+}
+
+// ── INIT ─────────────────────────────────────────────────
+lucide.createIcons();
+showSection('alerts');
+</script>
+</body>
+</html>
